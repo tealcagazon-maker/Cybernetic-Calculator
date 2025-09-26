@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cybernetic Calculator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --color-background: #0a0f18; --color-foreground: #e0e0e0; --color-accent: #00f7ff; --color-accent-dark: #0a8c99; --color-ui-primary: #1a2333; --font-family: 'Roboto Mono', monospace; --radius: 4px; --s2: 8px; --s3: 16px; }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: var(--font-family); background-color: var(--color-background); color: var(--color-foreground); display: grid; place-items: center; min-height: 100vh; overflow: hidden; }
+        @media (prefers-reduced-motion: reduce) { .view { transition: none; } }
+        .app-container { width: 100%; max-width: 400px; padding: var(--s3); position: relative; }
+        .view { transition: opacity 300ms ease-in-out, transform 300ms ease-in-out; }
+        .view.hidden { opacity: 0; transform: scale(0.9); pointer-events: none; position: absolute; }
+        .calculator { background-color: var(--color-ui-primary); border: 1px solid var(--color-accent-dark); border-radius: var(--radius); box-shadow: 0 0 15px var(--color-accent-dark), inset 0 0 5px rgba(0, 0, 0, 0.5); padding: var(--s3); display: flex; flex-direction: column; gap: var(--s3); }
+        .calculator-display { background-color: var(--color-background); border: 1px solid var(--color-accent-dark); border-radius: var(--radius); padding: var(--s3); text-align: right; font-size: 2.5rem; font-weight: 700; min-height: 80px; overflow-x: auto; color: var(--color-accent); text-shadow: 0 0 5px var(--color-accent); word-wrap: break-word; word-break: break-all; }
+        .calculator-keys { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--s2); }
+        .calculator-key { background-color: var(--color-background); border: 1px solid var(--color-accent-dark); color: var(--color-foreground); font-family: var(--font-family); font-size: 1.5rem; padding: var(--s3); border-radius: var(--radius); cursor: pointer; transition: all 150ms ease-in-out; }
+        .calculator-key:hover, .calculator-key:focus-visible { background-color: var(--color-accent-dark); box-shadow: 0 0 10px var(--color-accent); outline: none; }
+        .calculator-key:active { transform: scale(0.95); background-color: var(--color-accent); color: var(--color-background); }
+        .key--operator { color: var(--color-accent); }
+        .key--equals { grid-column: span 2; background-color: var(--color-accent-dark); color: var(--color-background); font-weight: 700; }
+        .key--equals:hover, .key--equals:focus-visible { background-color: var(--color-accent); }
+        .snake-game { display: flex; flex-direction: column; gap: var(--s3); }
+        .snake-game-board { width: 100%; aspect-ratio: 1 / 1; position: relative; }
+        #game-canvas { background-color: var(--color-background); border: 2px solid var(--color-accent); box-shadow: 0 0 15px var(--color-accent); }
+        .game-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(10, 15, 24, 0.8); color: var(--color-accent); display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; text-shadow: 0 0 10px var(--color-accent); opacity: 0; pointer-events: none; transition: opacity 300ms ease-in-out; }
+        .game-overlay.visible { opacity: 1; }
+        .game-overlay h2 { font-size: 3rem; }
+        .game-overlay p { font-size: 1.2rem; margin-top: var(--s2); }
+        .powerup-controls { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s2); }
+        .powerup-btn { background-color: var(--color-ui-primary); border: 1px solid var(--color-accent-dark); color: var(--color-accent); font-family: var(--font-family); font-size: 1rem; padding: var(--s2); border-radius: var(--radius); cursor: pointer; transition: all 150ms ease-in-out; }
+        .powerup-btn:not(:disabled):hover { background-color: var(--color-accent); color: var(--color-background); }
+        .powerup-btn:disabled { background-color: var(--color-background); color: var(--color-accent-dark); cursor: not-allowed; }
+    </style>
+</head>
+<body>
+    <main id="app-container" class="app-container">
+        <section id="calculator-view" class="calculator view">
+            <div id="calculator-display" class="calculator-display" role="log" aria-live="polite">0</div>
+            <div class="calculator-keys">
+                <button class="calculator-key" data-key="clear">AC</button><button class="calculator-key" data-key="sign">+/-</button><button class="calculator-key key--operator" data-key="%" aria-label="Percentage">%</button><button class="calculator-key key--operator" data-key="/" aria-label="Divide">÷</button><button class="calculator-key" data-key="7">7</button><button class="calculator-key" data-key="8">8</button><button class="calculator-key" data-key="9">9</button><button class="calculator-key key--operator" data-key="*" aria-label="Multiply">×</button><button class="calculator-key" data-key="4">4</button><button class="calculator-key" data-key="5">5</button><button class="calculator-key" data-key="6">6</button><button class="calculator-key key--operator" data-key="-" aria-label="Subtract">−</button><button class="calculator-key" data-key="1">1</button><button class="calculator-key" data-key="2">2</button><button class="calculator-key" data-key="3">3</button><button class="calculator-key key--operator" data-key="+" aria-label="Add">+</button><button class="calculator-key" data-key="0">0</button><button class="calculator-key" data-key=".">.</button><button class="calculator-key key--equals" data-key="=" aria-label="Equals">=</button>
+            </div>
+        </section>
+        <section id="snake-game-view" class="snake-game view hidden">
+            <div class="snake-game-board">
+                <canvas id="game-canvas" role="img" aria-label="Snake game board"></canvas>
+                <div id="game-over-overlay" class="game-overlay">
+                    <h2 id="game-message-title">GAME OVER</h2>
+                    <p id="game-message-subtitle">Press ENTER to reset</p>
+                </div>
+            </div>
+            <div class="powerup-controls">
+                <button id="grow-self-btn" class="powerup-btn" data-powerup="grow_self" disabled>Grow (+1)</button>
+                <button id="shrink-opponent-btn" class="powerup-btn" data-powerup="shrink_opponent" disabled>Shrink (-1)</button>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            let ws = null;
+            const calculatorView = document.getElementById('calculator-view');
+            const snakeGameView = document.getElementById('snake-game-view');
+            const gameOverOverlay = document.getElementById('game-over-overlay');
+            const gameMessageTitle = document.getElementById('game-message-title');
+            const gameMessageSubtitle = document.getElementById('game-message-subtitle');
+            const growSelfBtn = document.getElementById('grow-self-btn');
+            const shrinkOpponentBtn = document.getElementById('shrink-opponent-btn');
+            
+            const displayElement = document.getElementById('calculator-display');
+            const keysContainer = document.querySelector('.calculator-keys');
+            const calculator = { displayValue: '0', firstOperand: null, waitingForSecondOperand: false, operator: null, easterEggSequence: '' };
+            
+            function updateDisplay() { displayElement.textContent = calculator.displayValue; }
+            function resetCalculator() { calculator.displayValue = '0'; calculator.firstOperand = null; calculator.waitingForSecondOperand = false; calculator.operator = null; calculator.easterEggSequence = ''; updateDisplay(); }
+            keysContainer.addEventListener('click', (event) => { if (!event.target.matches('button')) return; handleInput(event.target.dataset.key); updateDisplay(); });
+            function handleInput(key) { if (/\d/.test(key)) { inputDigit(key); checkEasterEgg(key); return; } if (key === '.') { inputDecimal(key); return; } if (/[*\/+\-%]/.test(key)) { handleOperator(key); return; } if (key === '=') { handleEquals(); return; } if (key === 'clear') { resetCalculator(); return; } if (key === 'sign') { toggleSign(); return; } }
+            function inputDigit(digit) { const { displayValue, waitingForSecondOperand } = calculator; if (waitingForSecondOperand) { calculator.displayValue = digit; calculator.waitingForSecondOperand = false; } else { calculator.displayValue = displayValue === '0' ? digit : displayValue + digit; } }
+            function inputDecimal(dot) { if (calculator.waitingForSecondOperand) { calculator.displayValue = '0.'; calculator.waitingForSecondOperand = false; return; } if (!calculator.displayValue.includes(dot)) { calculator.displayValue += dot; } }
+            function handleOperator(nextOperator) { const { firstOperand, displayValue, operator } = calculator; const inputValue = parseFloat(displayValue); if (operator && calculator.waitingForSecondOperand) { calculator.operator = nextOperator; return; } if (firstOperand === null && !isNaN(inputValue)) { calculator.firstOperand = inputValue; } else if (operator) { const result = calculate(firstOperand, inputValue, operator); calculator.displayValue = `${parseFloat(result.toFixed(7))}`; calculator.firstOperand = result; } calculator.waitingForSecondOperand = true; calculator.operator = nextOperator; }
+            function calculate(first, second, op) { if (op === '+') return first + second; if (op === '-') return first - second; if (op === '*') return first * second; if (op === '/') return first / second; if (op === '%') return first % second; return second; }
+            function handleEquals() { const { firstOperand, displayValue, operator } = calculator; if (operator === null || firstOperand === null) return; const secondOperand = parseFloat(displayValue); const result = calculate(firstOperand, secondOperand, operator); calculator.displayValue = `${parseFloat(result.toFixed(7))}`; calculator.firstOperand = null; calculator.waitingForSecondOperand = false; calculator.operator = null; }
+            function toggleSign() { calculator.displayValue = (parseFloat(calculator.displayValue) * -1).toString(); }
+            function checkEasterEgg(digit) { const SECRET_CODE = '676767'; calculator.easterEggSequence += digit; if (calculator.easterEggSequence.length > SECRET_CODE.length) { calculator.easterEggSequence = calculator.easterEggSequence.slice(-SECRET_CODE.length); } if (calculator.easterEggSequence === SECRET_CODE) { transitionToSnakeGame(); resetCalculator(); } }
+            updateDisplay();
+
+            function sendMessage(type, payload) { if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type, payload })); }
+            
+            growSelfBtn.addEventListener('click', () => sendMessage('use_powerup', { type: 'grow_self' }));
+            shrinkOpponentBtn.addEventListener('click', () => sendMessage('use_powerup', { type: 'shrink_opponent' }));
+
+            function transitionToSnakeGame() {
+                calculatorView.classList.add('hidden');
+                snakeGameView.classList.remove('hidden');
+                setupCanvas();
+
+                const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+                const wsUrl = `${protocol}://${window.location.host}`;
+                console.log(`Connecting to WebSocket at ${wsUrl}`);
+                ws = new WebSocket(wsUrl);
+                
+                ws.onopen = () => sendMessage('join_game', {});
+                ws.onmessage = (event) => handleServerMessage(JSON.parse(event.data));
+                ws.onclose = () => console.log('Disconnected.');
+                ws.onerror = (error) => console.error('WebSocket Error:', error);
+            }
+
+            function transitionToCalculator() {
+                if (ws) ws.close();
+                snakeGameView.classList.add('hidden');
+                calculatorView.classList.remove('hidden');
+                resetCalculator();
+                document.removeEventListener('keydown', handleGameKeyDown);
+            }
+
+            const canvas = document.getElementById('game-canvas');
+            const ctx = canvas.getContext('2d');
+            const GRID_SIZE = 20;
+            let myPlayerId = null;
+
+            function setupCanvas() {
+                const container = document.querySelector('.snake-game-board');
+                const canvasSize = container.clientWidth;
+                canvas.width = canvasSize;
+                canvas.height = canvasSize;
+            }
+
+            function handleServerMessage({ type, payload }) {
+                if (type === 'game_wait') {
+                    gameOverOverlay.classList.add('visible');
+                    gameMessageTitle.textContent = "WAITING";
+                    gameMessageSubtitle.textContent = "Looking for an opponent...";
+                }
+                if (type === 'game_start') {
+                    myPlayerId = payload.player_id;
+                    gameOverOverlay.classList.remove('visible');
+                    document.addEventListener('keydown', handleGameKeyDown);
+                    updateUI(payload.state);
+                }
+                if (type === 'game_update') {
+                    updateUI(payload);
+                }
+                if (type === 'game_over') {
+                    gameOverOverlay.classList.add('visible');
+                    gameMessageTitle.textContent = payload.winner_id === myPlayerId ? "YOU WIN" : "YOU LOSE";
+                    gameMessageSubtitle.textContent = "Press ENTER to reset";
+                    document.removeEventListener('keydown', handleGameKeyDown);
+                    document.addEventListener('keydown', handleResetKey, { once: true });
+                }
+            }
+            
+            function handleResetKey(e) { if (e.key === 'Enter') transitionToCalculator(); }
+
+            function updateUI(state) {
+                draw(state);
+                updatePowerupButtons(state.powerups);
+            }
+
+            function updatePowerupButtons(powerups) {
+                if (!powerups || !myPlayerId) return;
+                const myPowerups = powerups.find(p => p.id === myPlayerId);
+                if (myPowerups.grow_self.isReady) { growSelfBtn.disabled = false; growSelfBtn.textContent = 'Grow (+1)'; } 
+                else { growSelfBtn.disabled = true; growSelfBtn.textContent = `Grow (${myPowerups.grow_self.cooldownRemaining.toFixed(0)}s)`; }
+                if (myPowerups.shrink_opponent.isReady) { shrinkOpponentBtn.disabled = false; shrinkOpponentBtn.textContent = 'Shrink (-1)'; } 
+                else { shrinkOpponentBtn.disabled = true; shrinkOpponentBtn.textContent = `Shrink (${myPowerups.shrink_opponent.cooldownRemaining.toFixed(0)}s)`; }
+            }
+
+            function draw(state) {
+                ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--color-background');
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                if (state.snakes) {
+                    state.snakes.forEach(snake => {
+                        ctx.fillStyle = snake.id === myPlayerId ? getComputedStyle(document.documentElement).getPropertyValue('--color-accent') : '#ff4136';
+                        snake.segments.forEach(segment => ctx.fillRect(segment.x, segment.y, GRID_SIZE, GRID_SIZE));
+                    });
+                }
+                if (state.food) {
+                    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--color-foreground');
+                    ctx.fillRect(state.food.x, state.food.y, GRID_SIZE, GRID_SIZE);
+                }
+            }
+
+            function handleGameKeyDown(e) {
+                let direction = null;
+                if (e.key === 'w' || e.key === 'ArrowUp') direction = 'up';
+                if (e.key === 's' || e.key === 'ArrowDown') direction = 'down';
+                if (e.key === 'a' || e.key === 'ArrowLeft') direction = 'left';
+                if (e.key === 'd' || e.key === 'ArrowRight') direction = 'right';
+                if (direction) sendMessage('player_move', { direction });
+            }
+        });
+    </script>
+</body>
+</html>
