@@ -10,24 +10,32 @@ const PORT = process.env.PORT || 8080;
 
 // 1. Create a standard HTTP server
 const server = http.createServer((req, res) => {
-    // This serves your index.html file
-    const filePath = path.join(__dirname, '..', 'client', 'index.html');
-    fs.readFile(filePath, (err, data) => {
-        if (err) {
-            res.writeHead(500);
-            return res.end('Error loading index.html');
-        }
-        res.writeHead(200, { 'Content-Type': 'text/html' });
-        res.end(data);
-    });
+    // --- FIX STARTS HERE ---
+    // Only serve the index.html for requests to the root URL "/"
+    if (req.url === '/') {
+        const filePath = path.join(__dirname, '..', 'client', 'index.html');
+        fs.readFile(filePath, (err, data) => {
+            if (err) {
+                console.error('Error reading index.html:', err); // Log the error
+                res.writeHead(500);
+                return res.end('Error loading index.html');
+            }
+            res.writeHead(200, { 'Content-Type': 'text/html' });
+            res.end(data);
+        });
+    } else {
+        // For any other request, send a 404 Not Found
+        res.writeHead(404);
+        res.end('Not Found');
+    }
+    // --- FIX ENDS HERE ---
 });
+
 
 // 2. Attach the WebSocket server to the HTTP server
 const wss = new WebSocketServer({ server });
 
-console.log(`Server started on port ${PORT}`);
-
-// --- All game logic below is identical to the previous version ---
+// --- All game logic below is identical and unchanged ---
 let waitingPlayer = null;
 const gameSessions = {};
 const GRID_SIZE = 20;
@@ -135,5 +143,6 @@ wss.on('connection', (ws) => {
 
 // 3. Start the HTTP server
 server.listen(PORT, () => {
+    console.log(`Server started on port ${PORT}`);
     console.log(`HTTP server listening on port ${PORT}`);
 });
